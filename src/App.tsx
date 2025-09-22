@@ -11,31 +11,28 @@ interface Message {
   timestamp: Date;
 }
 
-type GamePhase = 'normal' | 'unstable' | 'broken';
+type GamePhase = 'phase_1' | 'phase_2' | 'phase_3' | 'broken';
 
 const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [phase, setPhase] = useState<GamePhase>('normal');
+  const [phase, setPhase] = useState<GamePhase>('phase_1');
   const [isTyping, setIsTyping] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   let added = false;
 
   // Trigger responses (script mode)
   const triggers: Record<string, { response: string; nextPhase?: GamePhase }> = {
-    'CLUE_1': {
-      response: 'I hear a voice… It’s cold, let me out of here.',
-      nextPhase: 'unstable'
+    'ALERT': {
+      response: 'Soft as a cradle, but keeper of fears. I guard the whispers that haunt your ears. I hide what you seek, though silent I stay. Lift me, and find it—before dreams decay',
+      nextPhase: 'phase_2'
     },
     'CLUE_2': {
       response: 'なぜ...なぜここにいる？でも...でも進んで。',
-      nextPhase: 'unstable'
+      nextPhase: 'phase_3'
     },
     'FINAL': {
       response: 'K3Y...3Y3...th3y...w4tch1ng...',
@@ -43,30 +40,19 @@ const App: React.FC = () => {
     }
   };
 
-  // Voice spells
-  const voiceSpells: Record<string, { response: string; nextPhase?: GamePhase }> = {
-    'あかきちから': {
-      response: '血の力が解放された...扉の向こうに何かが蠢いている。',
-      nextPhase: 'unstable'
-    },
-    'やみのしんじつ': {
-      response: '闇の真実...鏡の世界への入り口が現れました。地下室を探してください。',
-      nextPhase: 'unstable'
-    },
-    'でてこいあくま': {
-      response: '悪魔よ出てこい...何かが近づいてきます。振り返ってはいけません。',
-      nextPhase: 'broken'
-    }
-  };
-
   // AI responses by phase
   const aiResponses = {
-    normal: [
+    phase_1: [
       "部屋を見回してみて。何か手掛かりがあるはず。",
       "引き出しや箱の中も調べてみよう。",
       "壁に貼ってある写真や絵も怪しいね。"
     ],
-    unstable: [
+    phase_2: [
+      "その箱...開けた？中に何かいる...いや、大丈夫、進んで。",
+      "君の後ろに...いや、気のせいだ。でも気をつけて。",
+      "音が聞こえる...でも...でも続けて。"
+    ],
+    phase_3: [
       "その箱...開けた？中に何かいる...いや、大丈夫、進んで。",
       "君の後ろに...いや、気のせいだ。でも気をつけて。",
       "音が聞こえる...でも...でも続けて。"
@@ -122,73 +108,6 @@ const App: React.FC = () => {
     }, 2000);
   };
 
-  // Voice recording
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      chunksRef.current = [];
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        chunksRef.current.push(event.data);
-      };
-
-      mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/wav' });
-        processVoiceRecording(blob);
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-
-      // Auto-stop after 10 seconds
-      setTimeout(() => {
-        if (isRecording) {
-          stopRecording();
-        }
-      }, 10000);
-
-    } catch (error) {
-      alert('マイクアクセスが許可されていません');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  };
-
-  const processVoiceRecording = async (audioBlob: Blob) => {
-    addMessage('user', '🎤 音声メッセージ', 'voice');
-    setIsTyping(true);
-
-    // TODO: Replace with actual Whisper API call
-    // Mock transcription for now
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const mockTranscripts = ['あかきちから', 'やみのしんじつ', 'でてこいあくま', 'なにもない'];
-    const transcript = mockTranscripts[Math.floor(Math.random() * mockTranscripts.length)];
-
-    const spellKey = transcript.replace(/\s/g, '');
-    if (voiceSpells[spellKey]) {
-      const spell = voiceSpells[spellKey];
-      addMessage('ai', `"${transcript}" ...呪文を受信しました。`);
-      setTimeout(() => {
-        addMessage('ai', spell.response);
-        if (spell.nextPhase) {
-          setPhase(spell.nextPhase);
-        }
-      }, 1000);
-    } else {
-      addMessage('ai', `"${transcript}" ...この言葉には力がないようです。`);
-    }
-
-    setIsTyping(false);
-  };
-
   // Image upload
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -211,7 +130,7 @@ const App: React.FC = () => {
         const result = mockResults[Math.floor(Math.random() * mockResults.length)];
         addMessage('ai', result);
         if (Math.random() > 0.5) {
-          setPhase('unstable');
+          setPhase('phase_1');
         }
         setIsAnalyzing(false);
         setIsTyping(false);
@@ -246,7 +165,7 @@ const App: React.FC = () => {
 
   const getPhaseClass = (msgPhase: GamePhase) => {
     switch (msgPhase) {
-      case 'unstable': return 'text-yellow-300';
+      case 'phase_1': return 'text-yellow-300';
       case 'broken': return 'text-red-500 glitch-text';
       default: return 'text-white';
     }
@@ -254,8 +173,8 @@ const App: React.FC = () => {
 
   const getStatusText = () => {
     switch (phase) {
-      case 'normal': return { text: 'Online', class: 'text-green-400' };
-      case 'unstable': return { text: 'Connection Unstable', class: 'text-yellow-400' };
+      case 'phase_1': return { text: 'Online', class: 'text-green-400' };
+      case 'phase_2': return { text: 'Connection Unstable', class: 'text-yellow-400' };
       case 'broken': return { text: 'SYSTEM FAILURE', class: 'text-red-400 glitch-text' };
     }
   };
@@ -300,8 +219,8 @@ const App: React.FC = () => {
           <h1 className={`text-xl ${phase === 'broken' ? 'glitch-text' : ''}`}>
             {phase === 'broken' ? 'SY5T3M_3RR0R' : ''}
           </h1>
-          <div className={`text-sm ${status.class}`}>
-            {status.text}
+          <div className={`text-sm ${status?.class}`}>
+            {status?.text}
           </div>
         </div>
 
@@ -371,20 +290,8 @@ const App: React.FC = () => {
               className={`flex-1 p-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 ${phase === 'broken' ? 'text-red-400 placeholder-red-600' : ''
                 }`}
               placeholder={phase === 'broken' ? '3nt3r...m355463...' : 'メッセージを入力...'}
-              disabled={isTyping || isRecording}
-            />
-
-            <button
-              onClick={isRecording ? stopRecording : startRecording}
               disabled={isTyping}
-              className={`p-2 rounded-lg transition-colors ${isRecording
-                ? 'recording-pulse text-white'
-                : 'bg-purple-600 hover:bg-purple-700 disabled:opacity-50'
-                }`}
-              title={isRecording ? "録音停止" : "音声録音"}
-            >
-              <Mic size={20} />
-            </button>
+            />
 
             <button
               onClick={openCamera}
@@ -406,20 +313,13 @@ const App: React.FC = () => {
 
             <button
               onClick={sendTextMessage}
-              disabled={isTyping || !input.trim() || isRecording}
+              disabled={isTyping || !input.trim()}
               className="p-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors"
               title="送信"
             >
               <Send size={20} />
             </button>
           </div>
-
-          {isRecording && (
-            <div className="mt-2 text-sm text-red-400 flex items-center">
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
-              録音中... (最大10秒)
-            </div>
-          )}
         </div>
       </div>
     </div>
