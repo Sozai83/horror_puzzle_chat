@@ -25,16 +25,12 @@ const App: React.FC = () => {
   let added = false;
 
   // Trigger responses (script mode)
-  const triggers: Record<string, { response: string; nextPhase?: GamePhase }> = {
+  const textTriggers: Record<string, { response: string; nextPhase?: GamePhase }> = {
     'ALERT': {
       response: 'Soft as a cradle, but keeper of fears. I guard the whispers that haunt your ears. I hide what you seek, though silent I stay. Lift me, and find it—before dreams decay',
       nextPhase: 'phase_2'
     },
-    'CLUE_2': {
-      response: 'なぜ...なぜここにいる？でも...でも進んで。',
-      nextPhase: 'phase_3'
-    },
-    'FINAL': {
+    'SHIZUOKA': {
       response: 'K3Y...3Y3...th3y...w4tch1ng...',
       nextPhase: 'broken'
     }
@@ -86,9 +82,9 @@ const App: React.FC = () => {
     setInput('');
     setIsTyping(true);
 
-    // Check for triggers
-    if (triggers[currentInput]) {
-      const trigger = triggers[currentInput];
+    // Check for textTriggers
+    if (textTriggers[currentInput]) {
+      const trigger = textTriggers[currentInput];
       setTimeout(() => {
         addMessage('ai', trigger.response);
         if (trigger.nextPhase) {
