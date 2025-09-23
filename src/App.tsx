@@ -21,7 +21,6 @@ const App: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   let added = false;
 
@@ -32,7 +31,7 @@ const App: React.FC = () => {
       nextPhase: 'phase_2'
     },
     'SHIZUOKA': {
-      response: 'K3Y...3Y3...th3y...w4tch1ng...',
+      response: 'Kρυrokο nο Bαsket... Cαrdcαptor Sαkurα... Nαushikα.... n!er.... sυzµe.... Th3re is α b00k thαt d0es n0t l00k fαm!l!er....',
       nextPhase: 'broken'
     }
   };
@@ -50,13 +49,13 @@ const App: React.FC = () => {
       "I cradle your head… and whisper when you sleep. What am I?"
     ],
     phase_3: [
-      "その箱...開けた？中に何かいる...いや、大丈夫、進んで。",
-      "君の後ろに...いや、気のせいだ。でも気をつけて。",
-      "音が聞こえる...でも...でも続けて。"
+      "drip.... drip.... drip....",
+      "Where the tiles are cold, your secret waits.",
+      "Have you taken shower yet? Something stinks..."
     ],
     broken: [
-      "3rr0r...f1nd...th3m...",
-      "th3y...w4tch...y0u...",
+      "upstα!rs....f!nd....th3m.....",
+      "th3y...w4tch...y0u...fr0m....th3....ab0ve....",
       "d0...n0t...tr5st..."
     ]
   };
@@ -109,6 +108,7 @@ const App: React.FC = () => {
   // Scan QR code
   const openCamera = () => {
     addMessage('user', 'Opening the camera...');
+    setIsAnalyzing(true);
     Html5Qrcode.getCameras().then(devices => {
       if (devices && devices.length) {
         const html5QrCode = new Html5Qrcode("reader");
@@ -120,17 +120,21 @@ const App: React.FC = () => {
           },
           (decodedText) => {
             closeCamera(html5QrCode);
-            if (decodedText.trim() == 'KarlBD2025') {
-              const hint = 'Seek the chamber where droplets sing, A hidden cloud on silver string. Step inside, let waters pour,They’ll cleanse your skin, and so much more. Delay too long, the stench will stay - Wash now, or filth will mark your way.';
-              addMessage('ai', hint);
-              setPhase('phase_3');
-            } else {
-              addMessage('ai', 'Wrong QR code has been scaned. Try again.');
-            }
+            setTimeout(() => {
+              setIsAnalyzing(false);
+              if (decodedText.trim() == 'KarlBD2025') {
+                const hint = 'Seek the chamber where droplets sing, A hidden cloud on silver string. Step inside, let waters pour,They’ll cleanse your skin, and so much more. Delay too long, the stench will stay - Wash now, or filth will mark your way.';
+                addMessage('ai', hint);
+                setPhase('phase_3');
+              } else {
+                addMessage('ai', 'Wrong QR code has been scaned. Try again.');
+              }
+            }, 5000);
           },
           (errorMessage) => {
             throw Error(errorMessage);
           }).catch((err: any) => {
+            setIsAnalyzing(false);
             if (html5QrCode) {
               closeCamera(html5QrCode);
             }
@@ -138,7 +142,7 @@ const App: React.FC = () => {
           });
       }
     }).catch(err => {
-      console.log('getCameras', err);
+      setIsAnalyzing(false);
       addMessage('ai', err.message);
     });
   };
@@ -285,13 +289,13 @@ const App: React.FC = () => {
               onKeyPress={(e) => e.key === 'Enter' && sendTextMessage()}
               className={`flex-1 p-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 ${phase === 'broken' ? 'text-red-400 placeholder-red-600' : ''
                 }`}
-              placeholder={phase === 'broken' ? '3nt3r...m355463...' : 'メッセージを入力...'}
+              placeholder={phase === 'broken' ? '' : 'Enter message'}
               disabled={isTyping}
             />
 
             <button
               onClick={openCamera}
-              disabled={isTyping || isAnalyzing}
+              disabled={isTyping || isAnalyzing || phase === 'broken'}
               className="p-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg transition-colors"
               title="Take a picture"
             >
@@ -300,9 +304,9 @@ const App: React.FC = () => {
 
             <button
               onClick={sendTextMessage}
-              disabled={isTyping || !input.trim()}
+              disabled={isTyping || !input.trim() || isAnalyzing}
               className="p-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors"
-              title="送信"
+              title="Send"
             >
               <Send size={20} />
             </button>
