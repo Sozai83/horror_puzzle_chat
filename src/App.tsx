@@ -1,6 +1,7 @@
 // src/App.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Camera, Image, Send } from 'lucide-react';
+import { Camera, Image, Send } from 'lucide-react';
+import { Html5Qrcode } from "html5-qrcode";
 
 interface Message {
   id: string;
@@ -39,14 +40,14 @@ const App: React.FC = () => {
   // AI responses by phase
   const aiResponses = {
     phase_1: [
-      "部屋を見回してみて。何か手掛かりがあるはず。",
-      "引き出しや箱の中も調べてみよう。",
-      "壁に貼ってある写真や絵も怪しいね。"
+      "Take a look around the room. There must be some clues.",
+      "I see white... rectangle... doors...",
+      "The photos and pictures on the wall look suspicious too."
     ],
     phase_2: [
-      "その箱...開けた？中に何かいる...いや、大丈夫、進んで。",
-      "君の後ろに...いや、気のせいだ。でも気をつけて。",
-      "音が聞こえる...でも...でも続けて。"
+      "You were just there a moment ago.",
+      "Behind you… no, must be my imagination. But be careful.",
+      "I cradle your head… and whisper when you sleep. What am I?"
     ],
     phase_3: [
       "その箱...開けた？中に何かいる...いや、大丈夫、進んで。",
@@ -104,44 +105,51 @@ const App: React.FC = () => {
     }, 2000);
   };
 
-  // Image upload
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
 
-    addMessage('user', '📷 画像をアップロードしました', 'image');
-    setIsAnalyzing(true);
-    setIsTyping(true);
-
-    // TODO: Replace with actual Vision API call
-    // Mock analysis for now
-    setTimeout(() => {
-      addMessage('ai', '画像を解析中...');
-      setTimeout(() => {
-        const mockResults = [
-          '断片を並べ替えると...「地下室の鏡の後ろ」という文字が浮かび上がりました。',
-          'この鏡には隠された文字が...「MIRROR WORLD AWAITS 3147」。数字の組み合わせかもしれません。',
-          '血で書かれた暗号...これは古い言語です。「彼らが来る、扉を閉めろ」と書いてあります。'
-        ];
-        const result = mockResults[Math.floor(Math.random() * mockResults.length)];
-        addMessage('ai', result);
-        if (Math.random() > 0.5) {
-          setPhase('phase_1');
-        }
-        setIsAnalyzing(false);
-        setIsTyping(false);
-      }, 2000);
-    }, 1500);
-  };
-
+  // Scan QR code
   const openCamera = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment';
-    input.onchange = handleImageUpload as any;
-    input.click();
+    addMessage('user', 'Opening the camera...');
+    Html5Qrcode.getCameras().then(devices => {
+      if (devices && devices.length) {
+        const html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 }
+          },
+          (decodedText) => {
+            closeCamera(html5QrCode);
+            if (decodedText.trim() == 'KarlBD2025') {
+              const hint = 'Seek the chamber where droplets sing, A hidden cloud on silver string. Step inside, let waters pour,They’ll cleanse your skin, and so much more. Delay too long, the stench will stay - Wash now, or filth will mark your way.';
+              addMessage('ai', hint);
+              setPhase('phase_3');
+            } else {
+              addMessage('ai', 'Wrong QR code has been scaned. Try again.');
+            }
+          },
+          (errorMessage) => {
+            throw Error(errorMessage);
+          }).catch((err: any) => {
+            if (html5QrCode) {
+              closeCamera(html5QrCode);
+            }
+            addMessage('ai', err);
+          });
+      }
+    }).catch(err => {
+      console.log('getCameras', err);
+      addMessage('ai', err.message);
+    });
   };
+
+  const closeCamera = (html5QrCode: Html5Qrcode) => {
+    html5QrCode.stop().then((ignore) => {
+      console.log(ignore);
+    }).catch((err) => {
+      console.log(err);
+    });
+  }
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -255,7 +263,7 @@ const App: React.FC = () => {
             <div className="bg-gray-800 p-3 rounded-lg max-w-xs">
               <div className="flex items-center space-x-2">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                <span className="text-sm">画像解析中...</span>
+                <span className="text-sm">Analysing uploaded image...</span>
               </div>
             </div>
           )}
@@ -268,15 +276,7 @@ const App: React.FC = () => {
           <div className="mb-2 text-xs text-gray-400">
             💡 If you discover any clues, share them with me.
           </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-
+          <div id="reader"></div>
           <div className="flex space-x-2">
             <input
               type="text"
@@ -293,18 +293,9 @@ const App: React.FC = () => {
               onClick={openCamera}
               disabled={isTyping || isAnalyzing}
               className="p-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg transition-colors"
-              title="カメラで撮影"
+              title="Take a picture"
             >
               <Camera size={20} />
-            </button>
-
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isTyping || isAnalyzing}
-              className="p-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 rounded-lg transition-colors"
-              title="画像アップロード"
-            >
-              <Image size={20} />
             </button>
 
             <button
