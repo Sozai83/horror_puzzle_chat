@@ -1,13 +1,13 @@
 // src/App.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Image, Send } from 'lucide-react';
+import { Camera, Send } from 'lucide-react';
 import { Html5Qrcode } from "html5-qrcode";
 
 interface Message {
   id: string;
   type: 'user' | 'ai';
   content: string;
-  messageType: 'text' | 'voice' | 'image';
+  messageType: 'text';
   phase: GamePhase;
   timestamp: Date;
 }
@@ -55,19 +55,20 @@ const App: React.FC = () => {
     ],
     broken: [
       "upstα!rs....f!nd....th3m.....",
-      "th3y...w4tch...y0u...fr0m....th3....ab0ve....",
+      "th3y...w4tch...y0u...fr0m...th3...ab0ve...",
       "d0...n0t...tr5st..."
     ]
   };
 
   // Add message helper
-  const addMessage = (type: 'user' | 'ai', content: string, messageType: 'text' | 'voice' | 'image' = 'text') => {
+  const addMessage = (type: 'user' | 'ai', content: string, nextPhase: GamePhase = phase) => {
+    console.log('phase', phase)
     const newMessage: Message = {
       id: Date.now().toString(),
       type,
       content,
-      messageType,
-      phase: phase,
+      messageType: 'text',
+      phase: nextPhase,
       timestamp: new Date()
     };
     setMessages(prev => [...prev, newMessage]);
@@ -85,11 +86,11 @@ const App: React.FC = () => {
     // Check for textTriggers
     if (textTriggers[currentInput]) {
       const trigger = textTriggers[currentInput];
-      setTimeout(() => {
-        addMessage('ai', trigger.response);
-        if (trigger.nextPhase) {
+      if (trigger.nextPhase) {
           setPhase(trigger.nextPhase);
-        }
+      }
+      setTimeout(() => {
+        addMessage('ai', trigger.response, trigger.nextPhase);
         setIsTyping(false);
       }, 1500);
       return;
@@ -124,8 +125,8 @@ const App: React.FC = () => {
               setIsAnalyzing(false);
               if (decodedText.trim() == 'KarlBD2025') {
                 const hint = 'Seek the chamber where droplets sing, A hidden cloud on silver string. Step inside, let waters pour,They’ll cleanse your skin, and so much more. Delay too long, the stench will stay - Wash now, or filth will mark your way.';
-                addMessage('ai', hint);
                 setPhase('phase_3');
+                addMessage('ai', hint, 'phase_3');
               } else {
                 addMessage('ai', 'Wrong QR code has been scaned. Try again.');
               }
@@ -160,6 +161,11 @@ const App: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Check phase change
+  useEffect(() => {
+    console.log('Phase updated to:', phase);
+  }, [phase]);
+
   // Initial message
   useEffect(() => {
     if (!added) {
@@ -173,7 +179,9 @@ const App: React.FC = () => {
 
   const getPhaseClass = (msgPhase: GamePhase) => {
     switch (msgPhase) {
-      case 'phase_1': return 'text-yellow-300';
+      case 'phase_1': return 'text-green-400';
+      case 'phase_2': return 'text-green-400';
+      case 'phase_3': return 'text-yellow-300';
       case 'broken': return 'text-red-500 glitch-text';
       default: return 'text-white';
     }
@@ -182,7 +190,8 @@ const App: React.FC = () => {
   const getStatusText = () => {
     switch (phase) {
       case 'phase_1': return { text: 'Online', class: 'text-green-400' };
-      case 'phase_2': return { text: 'Connection Unstable', class: 'text-yellow-400' };
+      case 'phase_2': return { text: 'Online', class: 'text-green-400' };
+      case 'phase_3': return { text: 'Connection Unstable', class: 'text-yellow-400' };
       case 'broken': return { text: 'SYSTEM FAILURE', class: 'text-red-400 glitch-text' };
     }
   };
@@ -190,7 +199,7 @@ const App: React.FC = () => {
   const status = getStatusText();
 
   return (
-    <div className={`min-h-screen bg-gray-900 text-white font-mono ${phase === 'broken' ? 'broken-bg' : ''}`}>
+    <div className={`w-screen min-h-screen text-white font-mono ${phase === 'broken' ? 'broken-bg' : 'bg-gray-900'}`}>
       <style dangerouslySetInnerHTML={{
         __html: `
         @keyframes glitch {
@@ -204,27 +213,18 @@ const App: React.FC = () => {
         
         .glitch-text {
           animation: glitch 0.3s infinite;
-          text-shadow: 2px 2px 0px #ff0000, -2px -2px 0px #00ff00;
+          text-shadow: 1px 1px 0px #ff0000, -2px -2px 0px brown;
         }
         
         .broken-bg {
-          background: linear-gradient(45deg, #1a1a1a, #2d0000);
-        }
-
-        .recording-pulse {
-          animation: recording-pulse 1s infinite;
-        }
-
-        @keyframes recording-pulse {
-          0%, 100% { background-color: rgb(239, 68, 68); }
-          50% { background-color: rgb(127, 29, 29); }
+          background: linear-gradient(45deg, #500c0cff, #2d0000);
         }
       `}} />
 
-      <div className="container mx-auto max-w-2xl h-screen flex flex-col">
+      <div className="w-full h-screen flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-gray-700">
-          <h1 className={`text-xl ${phase === 'broken' ? 'glitch-text' : ''}`}>
+          <h1 className={`text-m ${phase === 'broken' ? 'glitch-text' : ''}`}>
             {phase === 'broken' ? 'SY5T3M_3RR0R' : ''}
           </h1>
           <div className={`text-sm ${status?.class}`}>
@@ -243,7 +243,6 @@ const App: React.FC = () => {
                 }`}
             >
               <div className={msg.type === 'ai' && phase === 'broken' ? 'font-bold tracking-wider' : ''}>
-                {msg.messageType === 'voice' && '🎤 '}
                 {msg.messageType === 'image' && '📷 '}
                 {msg.content}
               </div>
@@ -276,7 +275,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 border-t border-gray-700">
+        <div className="max-w-9/10 p-4 border-t border-gray-700">
           <div className="mb-2 text-xs text-gray-400">
             💡 If you discover any clues, share them with me.
           </div>
