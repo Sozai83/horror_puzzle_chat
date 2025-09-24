@@ -243,7 +243,6 @@ const App: React.FC = () => {
                 }`}
             >
               <div className={msg.type === 'ai' && phase === 'broken' ? 'font-bold tracking-wider' : ''}>
-                {msg.messageType === 'image' && '📷 '}
                 {msg.content}
               </div>
               <div className="text-xs text-gray-400 mt-1">
